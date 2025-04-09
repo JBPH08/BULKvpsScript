@@ -1,7 +1,7 @@
 #!/bin/bash
 # Bulk Change VPS Root Passwords - Clean Output with Colors
 
-NEW_PASSWORD="jasl1234"
+NEW_PASSWORD="jAsl12345"
 
 if [[ -z "$1" ]]; then
   echo "Usage: $0 <input_file>"
@@ -35,8 +35,9 @@ enable_root_login() {
       "*$ " {
           send "echo '$OLD_PASS' | sudo -S sed -i 's/^#*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config\r"
           send "echo '$OLD_PASS' | sudo -S sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config\r"
+          send "echo '$OLD_PASS' | sudo -S sed -i 's/^Port .*/Port 22/' /etc/ssh/sshd_config && systemctl restart sshd\r"
           send "echo '$OLD_PASS' | sudo -S systemctl restart sshd\r"
-          send "echo '$OLD_PASS' | sudo -S echo -e '$NEW_PASSWORD\\n$NEW_PASSWORD' | sudo passwd root\r"
+          send "echo '$OLD_PASS' | sudo -S echo -e '$NEW_PASSWORD\n$NEW_PASSWORD' | sudo passwd root\r"
           send "exit\r"
       }
   }
@@ -60,20 +61,29 @@ EOF
 }
 
 # Function 3: Ensure root password is set to NEW_PASSWORD (only if different)
-set_root_password() {
+enable_root_login2() {
   local IP=$1
   local PORT=$2
-  local OLD_PASS=$3
+  local USER=$3
+  local OLD_PASS=$4
 
   /usr/bin/expect <<EOF > /dev/null 2>&1
-  spawn ssh -o StrictHostKeyChecking=no -p $PORT root@$IP
+  spawn ssh -o StrictHostKeyChecking=no -p $PORT $USER@$IP
   expect {
       "*password:" { send "$OLD_PASS\r"; exp_continue }
-      "*$ " { send "echo -e '$NEW_PASSWORD\n$NEW_PASSWORD' | passwd root\r" }
+      "*# " {
+          send "sed -i 's/^#*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config\r"
+          send "sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config\r"
+          send "sed -i 's/^Port .*/Port 22/' /etc/ssh/sshd_config\r"
+          send "systemctl restart sshd\r"
+          send "echo -e '$NEW_PASSWORD\n$NEW_PASSWORD' | passwd root\r"
+          send "exit\r"
+      }
   }
   expect eof
 EOF
 }
+
 
 while IFS= read -r line || [[ -n "$line" ]]; do
   IP_PORT=$(echo "$line" | cut -d'@' -f1)
@@ -82,24 +92,23 @@ while IFS= read -r line || [[ -n "$line" ]]; do
   PORT=$(echo "$IP_PORT" | cut -d':' -f2)
   USER=$(echo "$USER_PASS" | cut -d':' -f1)
   OLD_PASS=$(echo "$USER_PASS" | cut -d':' -f2)
+  NEW_PASSWORD="xAm12345"
 
-  if [[ "$USER" != "root" ]]; then
+if [[ "$USER" != "root" ]]; then
+    # echo "Non-root user"
     enable_root_login "$IP" "$PORT" "$USER" "$OLD_PASS"
     USER="root"
-  fi
-
-  if [[ "$PORT" != "22" ]]; then
-    change_ssh_port "$IP" "$PORT"
     PORT="22"
-  fi
-
-  if [[ "$OLD_PASS" != "$NEW_PASSWORD" ]]; then
-    set_root_password "$IP" "$PORT" "$OLD_PASS"
-  fi
-
+fi
+if [[ "$USER" == "root" ]]; then
+    # echo "Confirmed root user"
+    enable_root_login2 "$IP" "$PORT" "$USER" "$OLD_PASS"
+    USER="root"
+    PORT="22"
+fi
   # Verify root login
   /usr/bin/expect <<EOF > /dev/null 2>&1
-  spawn ssh -o StrictHostKeyChecking=no -p $PORT root@$IP "echo 'Root login confirmed'"
+  spawn ssh -o StrictHostKeyChecking=no -p $PORT $USER@$IP "echo 'Root login confirmed'"
   expect {
       "*password:" { send "$NEW_PASSWORD\r"; exp_continue }
       "*Root login confirmed*" { exit 0 }
