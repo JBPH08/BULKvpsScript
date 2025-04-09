@@ -1,7 +1,7 @@
 #!/bin/bash
 # Bulk Change VPS Root Passwords - Clean Output with Colors
 
-NEW_PASSWORD="jAsl12345"
+NEW_PASSWORD="jasl1234"
 
 if [[ -z "$1" ]]; then
   echo "Usage: $0 <input_file>"
