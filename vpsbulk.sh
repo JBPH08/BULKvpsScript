@@ -92,7 +92,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
   PORT=$(echo "$IP_PORT" | cut -d':' -f2)
   USER=$(echo "$USER_PASS" | cut -d':' -f1)
   OLD_PASS=$(echo "$USER_PASS" | cut -d':' -f2)
-  NEW_PASSWORD="xAm12345"
+  NEW_PASSWORD="jAsl12345"
 
 if [[ "$USER" != "root" ]]; then
     # echo "Non-root user"
