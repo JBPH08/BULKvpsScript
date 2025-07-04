@@ -1,7 +1,7 @@
 #!/bin/bash
 # Bulk Change VPS Root Passwords - Parallel 10 at a Time
 
-NEW_PASSWORD="Happy12345"
+NEW_PASSWORD="Qwerty2025"
 MAX_CONCURRENT=20
 
 if [[ -z "$1" ]]; then
